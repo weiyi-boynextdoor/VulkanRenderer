@@ -1,0 +1,47 @@
+# Build output
+build/
+out/
+bin/
+lib/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Compiled shaders
+*.spv
+
+# Binaries
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.lib
+
+# Object files
+*.o
+*.obj
+
+# IDE / editor
+.vscode/
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+
+# OS
+Thumbs.db
+.DS_Store
