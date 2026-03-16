@@ -24,16 +24,16 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
 # ---------------------------------------------------------------------------
-# Shader compilation  (requires glslc from the Vulkan SDK)
+# Shader compilation  (requires slangc from the Vulkan SDK)
 # ---------------------------------------------------------------------------
-find_program(GLSLC glslc
+find_program(SLANGC slangc
     HINTS
         "$ENV{VULKAN_SDK}/Bin"
         "$ENV{VULKAN_SDK}/bin"
 )
-if(NOT GLSLC)
+if(NOT SLANGC)
     message(FATAL_ERROR
-        "glslc not found. Make sure the Vulkan SDK is installed and "
+        "slangc not found. Make sure the Vulkan SDK is installed and "
         "VULKAN_SDK env-var is set (e.g. C:/VulkanSDK/1.x.y.z).")
 endif()
 
@@ -41,23 +41,42 @@ set(SHADER_SRC_DIR  "${CMAKE_SOURCE_DIR}/shaders")
 set(SHADER_BIN_DIR  "${CMAKE_BINARY_DIR}/shaders")
 file(MAKE_DIRECTORY "${SHADER_BIN_DIR}")
 
-set(SHADER_SOURCES
-    "${SHADER_SRC_DIR}/triangle.vert"
-    "${SHADER_SRC_DIR}/triangle.frag"
+set(SLANG_SHADER "${SHADER_SRC_DIR}/triangle.slang")
+set(VERT_SPV "${SHADER_BIN_DIR}/triangle.vert.spv")
+set(FRAG_SPV "${SHADER_BIN_DIR}/triangle.frag.spv")
+
+add_custom_command(
+    OUTPUT  ${VERT_SPV}
+    COMMAND ${SLANGC}
+        -target spirv
+        -profile glsl_450
+        -entry vertexMain
+        -stage vertex
+        -o ${VERT_SPV}
+        ${SLANG_SHADER}
+    DEPENDS ${SLANG_SHADER}
+    COMMENT "Compiling Slang vertex shader: triangle.slang"
+    VERBATIM
 )
 
-foreach(SHADER ${SHADER_SOURCES})
-    get_filename_component(SHADER_NAME ${SHADER} NAME)
-    set(SPV "${SHADER_BIN_DIR}/${SHADER_NAME}.spv")
-    add_custom_command(
-        OUTPUT  ${SPV}
-        COMMAND ${GLSLC} ${SHADER} -o ${SPV}
-        DEPENDS ${SHADER}
-        COMMENT "Compiling shader: ${SHADER_NAME}"
-        VERBATIM
-    )
-    list(APPEND SPV_FILES ${SPV})
-endforeach()
+add_custom_command(
+    OUTPUT  ${FRAG_SPV}
+    COMMAND ${SLANGC}
+        -target spirv
+        -profile glsl_450
+        -entry fragmentMain
+        -stage fragment
+        -o ${FRAG_SPV}
+        ${SLANG_SHADER}
+    DEPENDS ${SLANG_SHADER}
+    COMMENT "Compiling Slang fragment shader: triangle.slang"
+    VERBATIM
+)
+
+set(SPV_FILES
+    ${VERT_SPV}
+    ${FRAG_SPV}
+)
 
 add_custom_target(Shaders ALL DEPENDS ${SPV_FILES})
 
