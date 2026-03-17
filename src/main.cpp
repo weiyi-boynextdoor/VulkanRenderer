@@ -743,21 +743,19 @@ private:
 
     void createGraphicsPipeline()
     {
-        auto vertCode = readFile("shaders/triangle.vert.spv");
-        auto fragCode = readFile("shaders/triangle.frag.spv");
+        auto shaderCode = readFile("shaders/test.spv");
 
-        vk::raii::ShaderModule vertModule = createShaderModule(vertCode);
-        vk::raii::ShaderModule fragModule = createShaderModule(fragCode);
+        vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
 
         vk::PipelineShaderStageCreateInfo vertStage{};
         vertStage.stage = vk::ShaderStageFlagBits::eVertex;
-        vertStage.module = *vertModule;
-        vertStage.pName = "main";
+        vertStage.module = *shaderModule;
+        vertStage.pName = "vertexMain";
 
         vk::PipelineShaderStageCreateInfo fragStage{};
         fragStage.stage = vk::ShaderStageFlagBits::eFragment;
-        fragStage.module = *fragModule;
-        fragStage.pName = "main";
+        fragStage.module = *shaderModule;
+        fragStage.pName = "fragmentMain";
 
         vk::PipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
 

@@ -41,42 +41,48 @@ set(SHADER_SRC_DIR  "${CMAKE_SOURCE_DIR}/shaders")
 set(SHADER_BIN_DIR  "${CMAKE_BINARY_DIR}/shaders")
 file(MAKE_DIRECTORY "${SHADER_BIN_DIR}")
 
-set(SLANG_SHADER "${SHADER_SRC_DIR}/triangle.slang")
-set(VERT_SPV "${SHADER_BIN_DIR}/triangle.vert.spv")
-set(FRAG_SPV "${SHADER_BIN_DIR}/triangle.frag.spv")
-
-add_custom_command(
-    OUTPUT  ${VERT_SPV}
-    COMMAND ${SLANGC}
-        -target spirv
-        -profile glsl_450
-        -entry vertexMain
-        -stage vertex
-        -o ${VERT_SPV}
-        ${SLANG_SHADER}
-    DEPENDS ${SLANG_SHADER}
-    COMMENT "Compiling Slang vertex shader: triangle.slang"
-    VERBATIM
+file(GLOB_RECURSE SLANG_SHADERS CONFIGURE_DEPENDS
+    "${SHADER_SRC_DIR}/*.slang"
 )
 
-add_custom_command(
-    OUTPUT  ${FRAG_SPV}
-    COMMAND ${SLANGC}
-        -target spirv
-        -profile glsl_450
-        -entry fragmentMain
-        -stage fragment
-        -o ${FRAG_SPV}
-        ${SLANG_SHADER}
-    DEPENDS ${SLANG_SHADER}
-    COMMENT "Compiling Slang fragment shader: triangle.slang"
-    VERBATIM
-)
+if(NOT SLANG_SHADERS)
+    message(FATAL_ERROR "No .slang files found under ${SHADER_SRC_DIR}")
+endif()
 
-set(SPV_FILES
-    ${VERT_SPV}
-    ${FRAG_SPV}
-)
+set(SPV_FILES)
+foreach(SLANG_SHADER IN LISTS SLANG_SHADERS)
+    file(RELATIVE_PATH SLANG_REL_PATH "${SHADER_SRC_DIR}" "${SLANG_SHADER}")
+    get_filename_component(SLANG_REL_DIR "${SLANG_REL_PATH}" DIRECTORY)
+    get_filename_component(SLANG_NAME_WE "${SLANG_SHADER}" NAME_WE)
+
+    if(SLANG_REL_DIR)
+        set(SHADER_OUTPUT_DIR "${SHADER_BIN_DIR}/${SLANG_REL_DIR}")
+    else()
+        set(SHADER_OUTPUT_DIR "${SHADER_BIN_DIR}")
+    endif()
+
+    file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}")
+
+    set(SHADER_SPV "${SHADER_OUTPUT_DIR}/${SLANG_NAME_WE}.spv")
+
+    add_custom_command(
+        OUTPUT  ${SHADER_SPV}
+        COMMAND ${SLANGC}
+            -target spirv
+            -profile spirv_1_3
+            -emit-spirv-directly
+            -fvk-use-entrypoint-name
+            -entry vertexMain
+            -entry fragmentMain
+            -o ${SHADER_SPV}
+            ${SLANG_SHADER}
+        DEPENDS ${SLANG_SHADER}
+        COMMENT "Compiling Slang shader module: ${SLANG_REL_PATH}"
+        VERBATIM
+    )
+
+    list(APPEND SPV_FILES ${SHADER_SPV})
+endforeach()
 
 add_custom_target(Shaders ALL DEPENDS ${SPV_FILES})
 
