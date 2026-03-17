@@ -4,26 +4,26 @@ struct VertexOutput
     float3 color : COLOR0;
 };
 
-static const float2 kPositions[3] =
+struct VertexInput
 {
-    float2(0.0, -0.5),
-    float2(0.5, 0.5),
-    float2(-0.5, 0.5)
+    float3 position : POSITION;
+    float3 color : COLOR0;
 };
 
-static const float3 kColors[3] =
+struct CameraData
 {
-    float3(1.0, 0.0, 0.0),
-    float3(0.0, 1.0, 0.0),
-    float3(0.0, 0.0, 1.0)
+    float4x4 modelViewProj;
 };
+
+[[vk::push_constant]]
+ConstantBuffer<CameraData> gCamera;
 
 [shader("vertex")]
-VertexOutput vertexMain(uint vertexIndex : SV_VertexID)
+VertexOutput vertexMain(VertexInput input)
 {
     VertexOutput output;
-    output.position = float4(kPositions[vertexIndex], 0.0, 1.0);
-    output.color = kColors[vertexIndex];
+    output.position = mul(gCamera.modelViewProj, float4(input.position, 1.0));
+    output.color = input.color;
     return output;
 }
 
