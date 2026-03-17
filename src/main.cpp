@@ -113,6 +113,7 @@ private:
     std::vector<vk::raii::Semaphore> m_imageAvailableSems;
     std::vector<vk::raii::Semaphore> m_renderFinishedSems;
     std::vector<vk::raii::Fence> m_inFlightFences;
+    std::vector<vk::Fence> m_imagesInFlight;
     uint32_t m_currentFrame = 0;
 
     void initWindow()
@@ -161,7 +162,7 @@ private:
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "None";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+        appInfo.apiVersion = VK_API_VERSION_1_1;
 
         auto extensions = requiredExtensions();
 
@@ -332,11 +333,20 @@ private:
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        vk::PhysicalDeviceFeatures features{};
+        auto availableFeatures = m_physDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features>();
+        if (!availableFeatures.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters) {
+            throw std::runtime_error("GPU does not support Vulkan 1.1 shaderDrawParameters");
+        }
+
+        vk::PhysicalDeviceFeatures2 features{};
+        vk::PhysicalDeviceVulkan11Features vulkan11Features{};
+        vulkan11Features.shaderDrawParameters = VK_TRUE;
+        features.pNext = &vulkan11Features;
+
         vk::DeviceCreateInfo createInfo{};
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
-        createInfo.pEnabledFeatures = &features;
+        createInfo.pNext = &features;
         createInfo.enabledExtensionCount = static_cast<uint32_t>(kDeviceExtensions.size());
         createInfo.ppEnabledExtensionNames = kDeviceExtensions.data();
         if (kEnableValidation) {
@@ -660,10 +670,8 @@ private:
     void createSyncObjects()
     {
         m_imageAvailableSems.clear();
-        m_renderFinishedSems.clear();
         m_inFlightFences.clear();
         m_imageAvailableSems.reserve(MAX_FRAMES_IN_FLIGHT);
-        m_renderFinishedSems.reserve(MAX_FRAMES_IN_FLIGHT);
         m_inFlightFences.reserve(MAX_FRAMES_IN_FLIGHT);
 
         vk::SemaphoreCreateInfo semInfo{};
@@ -672,8 +680,22 @@ private:
 
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             m_imageAvailableSems.emplace_back(m_device, semInfo);
-            m_renderFinishedSems.emplace_back(m_device, semInfo);
             m_inFlightFences.emplace_back(m_device, fenceInfo);
+        }
+
+        createPresentSyncObjects();
+    }
+
+    void createPresentSyncObjects()
+    {
+        m_renderFinishedSems.clear();
+        m_imagesInFlight.clear();
+        m_renderFinishedSems.reserve(m_scImages.size());
+        m_imagesInFlight.resize(m_scImages.size(), VK_NULL_HANDLE);
+
+        vk::SemaphoreCreateInfo semInfo{};
+        for (size_t i = 0; i < m_scImages.size(); ++i) {
+            m_renderFinishedSems.emplace_back(m_device, semInfo);
         }
     }
 
@@ -682,6 +704,8 @@ private:
         m_framebuffers.clear();
         m_scImageViews.clear();
         m_scImages.clear();
+        m_renderFinishedSems.clear();
+        m_imagesInFlight.clear();
         m_swapChain = nullptr;
     }
 
@@ -700,6 +724,7 @@ private:
         createSwapChain();
         createImageViews();
         createFramebuffers();
+        createPresentSyncObjects();
     }
 
     void mainLoop()
@@ -742,6 +767,11 @@ private:
         }
 
         const uint32_t imageIndex = acquireResult.value;
+        if (m_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+            static_cast<void>(m_device.waitForFences(m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX));
+        }
+        m_imagesInFlight[imageIndex] = inFlightFence;
+
         m_device.resetFences(inFlightFence);
 
         auto& commandBuffer = m_commandBuffers[m_currentFrame];
@@ -749,7 +779,8 @@ private:
         recordCommandBuffer(commandBuffer, imageIndex);
 
         vk::CommandBuffer rawCommandBuffer = *commandBuffer;
-        vk::Semaphore signalSems[] = { *m_renderFinishedSems[m_currentFrame] };
+        vk::Semaphore renderFinished = *m_renderFinishedSems[imageIndex];
+        vk::Semaphore signalSems[] = { renderFinished };
         vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
         vk::SubmitInfo submitInfo{};
