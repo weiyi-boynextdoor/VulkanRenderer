@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VulkanTriangle LANGUAGES CXX)
+project(VulkanRenderer LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -83,21 +83,21 @@ add_custom_target(Shaders ALL DEPENDS ${SPV_FILES})
 # ---------------------------------------------------------------------------
 # Executable
 # ---------------------------------------------------------------------------
-add_executable(VulkanTriangle src/main.cpp)
-add_dependencies(VulkanTriangle Shaders)
+add_executable(VulkanRenderer src/main.cpp)
+add_dependencies(VulkanRenderer Shaders)
 
-target_include_directories(VulkanTriangle PRIVATE ${Vulkan_INCLUDE_DIRS})
-target_link_libraries(VulkanTriangle PRIVATE Vulkan::Vulkan glfw)
+target_include_directories(VulkanRenderer PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(VulkanRenderer PRIVATE Vulkan::Vulkan glfw)
 
 # Copy compiled shaders next to the executable so relative path "shaders/" works
-add_custom_command(TARGET VulkanTriangle POST_BUILD
+add_custom_command(TARGET VulkanRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${SHADER_BIN_DIR}"
-        "$<TARGET_FILE_DIR:VulkanTriangle>/shaders"
+        "$<TARGET_FILE_DIR:VulkanRenderer>/shaders"
     COMMENT "Copying shaders to output directory"
 )
 
 # Set VS debugger working directory so shaders are found when F5-launched
-set_target_properties(VulkanTriangle PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:VulkanTriangle>"
+set_target_properties(VulkanRenderer PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:VulkanRenderer>"
 )

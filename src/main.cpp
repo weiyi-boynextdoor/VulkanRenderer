@@ -123,7 +123,7 @@ private:
         }
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Triangle", nullptr, nullptr);
+        m_window = glfwCreateWindow(WIDTH, HEIGHT, "VulkanRenderer", nullptr, nullptr);
         if (!m_window) {
             throw std::runtime_error("Failed to create GLFW window");
         }
@@ -158,7 +158,7 @@ private:
         }
 
         vk::ApplicationInfo appInfo{};
-        appInfo.pApplicationName = "VulkanTriangle";
+        appInfo.pApplicationName = "VulkanRenderer";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "None";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
